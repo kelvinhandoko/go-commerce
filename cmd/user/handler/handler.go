@@ -34,10 +34,11 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-	user, error := h.UserUsecase.GetUserByEmail(param.Email)
-	if error != nil {
-		log.Logger.Error("failed to get user by email", error)
-		c.JSON(http.StatusInternalServerError, gin.H{"error_message": error.Error()})
+	user, err := h.UserUsecase.GetUserByEmail(c.Request.Context(), param.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error_message": err.Error(),
+		})
 		return
 	}
 
@@ -58,6 +59,47 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "register success"})
+}
+
+func (h *UserHandler) Login(c *gin.Context) {
+	var param models.LoginParameter
+
+	if err := c.ShouldBindJSON(&param); err != nil {
+		log.Logger.Error("invalid parameter", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error_message": err.Error()})
+		return
+	}
+	token, err := h.UserUsecase.Login(c.Request.Context(), param)
+
+	if err != nil {
+		log.Logger.Error("failed to login", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error_message": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func (h *UserHandler) GetUserInfo(c *gin.Context) {
+	userIDStr, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error_message": "unauthorized"})
+		return
+	}
+
+	userID, ok := userIDStr.(float64)
+
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error_message": "unauthorized"})
+		return
+	}
+
+	user, err := h.UserUsecase.GetUserById(c.Request.Context(), int64(userID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error_message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"name": user.Name, "email": user.Email})
 }
 
 func (h *UserHandler) Ping(c *gin.Context) {

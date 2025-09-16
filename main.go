@@ -22,13 +22,14 @@ func main() {
 
 	userRepository := repository.NewUserRepository(db, redis)
 	userService := service.NewUserService(*userRepository)
-	userUseCase := usecase.NewUserUsecase(*userService)
+	userUseCase := usecase.NewUserUsecase(*userService, cfg.Secret.JWTSecret)
 	userHandler := handler.NewUserHandler(*userUseCase)
 
 	port := cfg.App.Port
 	router := gin.Default()
-	routes.SetupRoutes(router, *userHandler)
+	routes.SetupRoutes(router, *userHandler, cfg.Secret.JWTSecret)
 	router.Run(":" + port)
 
 	log.Logger.Infof("Server running on port %s", port)
+
 }
